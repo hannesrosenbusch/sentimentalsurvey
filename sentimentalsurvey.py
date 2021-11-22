@@ -1,4 +1,5 @@
 import streamlit as st
+nltk.download('vader_lexicon')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer #3.3
 import numpy as np #1.19.5
 from textblob import TextBlob
