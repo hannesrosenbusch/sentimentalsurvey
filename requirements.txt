@@ -1,7 +1,7 @@
-matplotlib @ file:///C:/ci/matplotlib-suite_1613408055530/work
-nltk @ file:///tmp/build/80754af9/nltk_1618327084230/work
-numpy @ file:///C:/ci/numpy_and_numpy_base_1618497418457/work
-pandas @ file:///C:/ci/pandas_1618365634936/work
-Pillow @ file:///C:/ci/pillow_1617386341487/work
+matplotlib==3.3.4
+nltk==3.6.1
+numpy==1.20.1
+pandas==1.2.4
+Pillow==8.2.0
 streamlit==1.2.0
 textblob==0.17.1
