@@ -22,6 +22,7 @@ def get_aggregate_sentiment(text, i, outputcsv):
 	sentiment_cat = 0
 	tb_polarity = TextBlob(str(text)).sentiment.polarity
 	vader_output = sid.polarity_scores(str(text))
+	print(vader_output)
 	vader_polarity = vader_output["pos"] - vader_output["neg"]
 	sentiment_cont = vader_polarity + tb_polarity
 	if vader_polarity > 0:
