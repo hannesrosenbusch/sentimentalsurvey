@@ -22,7 +22,6 @@ def get_aggregate_sentiment(text, i, outputcsv):
 	sentiment_cat = 0
 	tb_polarity = TextBlob(str(text)).sentiment.polarity
 	vader_output = sid.polarity_scores(str(text))
-	print(vader_output)
 	vader_polarity = vader_output["pos"] - vader_output["neg"]
 	sentiment_cont = vader_polarity + tb_polarity
 	if vader_polarity > 0:
@@ -46,7 +45,7 @@ def update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont):
 	prob_negat_user = (n_neg / n) 
 	prob_max = np.max([prob_posit_user, prob_negat_user])
 	error =  1.96 * np.sqrt((prob_max * (1-prob_max))/n)
-	return(prob_posit_user, prob_negat_user, error)
+	return(n, n_pos, n_neg, prob_posit_user, prob_negat_user, error)
 
 def update_highlights(sentiment_cont, highscores, highscores_i, lowscores, lowscores_i, i):
 	if sentiment_cont > np.min(highscores):
@@ -149,7 +148,7 @@ if uploaded_file is not None:
 			continue
 
 		#update statistics
-		prob_posit_user, prob_negat_user, error = update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont)
+		n, n_pos, n_neg, prob_posit_user, prob_negat_user, error = update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont)
 
 		#sentiment plot update
 		plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
@@ -165,6 +164,5 @@ if uploaded_file is not None:
 	display_highlights(df, highscores_i, lowscores_i)
 
 	#write out outputcsv
-	print(outputcsv.text[outputcsv["cont_s"] == 0])
-
-	outputcsv.to_csv("outputcsv.csv")
+	#print(outputcsv.text[outputcsv["cont_s"] == 0])
+	#outputcsv.to_csv("outputcsv.csv")
