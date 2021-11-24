@@ -1,14 +1,32 @@
-othercolumn;text;truesentiment
-1;i tried it and it does not work;neg
-2;the knife is not even sharp enough to cut butter;neg
-3;baeutiful images;pos
-1;hmmm I dont really like it;neg
-2;that is the best spot I have ever seen. So random lol;pos
-3;not sure;neg
-4;i am convinced;pos
-6;sorry not convinced;neg
-7;i have to admit that i hoped for a better result. It ends up being somewhat undwhelming;neg
-9;pretty funny;pos
-10;why would the actor do that? I dont get it.;n
-9;i dont have a lot of experience with traktors, but the look of the vehicle is impressive;pos
-12;too expensive;neg
+groupingcolumn;text;truesentiment
+0;i tried it and it bad;neg
+0;the knife is not even sharp enough to cut butter;neg
+1;ugly images;pos
+0;hmmm I dont really like it;neg
+1;that is the wolrst spot I have ever seen. So random lol;pos
+0;not sure;neg
+1;i am disappointed;pos
+0;sorry not convinced;neg
+0;i have to admit that i hoped for a better result. It ends up being somewhat undwhelming;neg
+1;pretty funny;pos
+1;i am disappointed;pos
+0;sorry not convinced;neg
+0;i have to admit that i hoped for a better result. It ends up being somewhat undwhelming;neg
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+1;pretty funny and good;pos
+0;bad worst;neg
+0;bad worst;neg
+0;bad worst;neg
+0;bad worst;neg
+0;bad worst;neg
+0;bad worst;neg
+0;bad worst;neg
+0;bad worst;neg
