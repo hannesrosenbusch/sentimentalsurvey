@@ -10,9 +10,12 @@ from PIL import Image
 from time import sleep
 from scipy.stats import ttest_ind
 from easynmt import EasyNMT
+import base64
 
 def translate_and_correct(text, model, lang, outputcsv, i):
-	if lang == "German":
+	if text == "-":
+		trans = "-"
+	elif lang == "German":
 		trans = model.translate(text, source_lang = "de", target_lang = "en")
 	elif lang == "English":
 		textBlb = TextBlob(text)           
@@ -37,10 +40,10 @@ def get_aggregate_sentiment(text, i, outputcsv):
 		sentiment_cat -= 1
 	if tb_polarity < 0:
 		sentiment_cat -= 1
-	outputcsv.cont_s[i] = sentiment_cont
-	outputcsv.cat_s[i] = sentiment_cat
-	outputcsv.vader_sent[i] = vader_polarity
-	outputcsv.textblob_sent[i] = tb_polarity
+	outputcsv.sentiment_continuous[i] = np.round(sentiment_cont * 100)
+	outputcsv.sentiment_categorical[i] = sentiment_cat
+	outputcsv.vader_sent[i] = np.round(vader_polarity * 100)
+	outputcsv.textblob_sent[i] = np.round(tb_polarity * 100)
 	return(sentiment_cat, sentiment_cont, outputcsv)
 
 def update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont):
@@ -53,11 +56,15 @@ def update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont):
 	error =  1.96 * np.sqrt((prob_max * (1-prob_max))/n)
 	return(n, n_pos, n_neg, prob_posit_user, prob_negat_user, error)
 
-def update_highlights(sentiment_cont, highscores, highscores_i, lowscores, lowscores_i, i):
-	if sentiment_cont > np.min(highscores):
+def update_highlights(sentiment_cont, highscores, highscores_i, lowscores, lowscores_i, i, df):
+	if (sentiment_cont > np.min(highscores)) and (df.loc[i, "text_low"] not in df.loc[highscores_i, "text_low"].values):
+		print(i)
+		print(df.loc[i, analysis_var])
+		print(df.loc[highscores_i, analysis_var])
+		print(df.loc[i, analysis_var] not in df.loc[highscores_i, analysis_var].values)
 		highscores_i = np.array([i, highscores_i[np.argmax(highscores)]])
 		highscores = np.array([sentiment_cont, np.max(highscores)])
-	elif sentiment_cont < np.max(lowscores):
+	elif sentiment_cont < np.max(lowscores) and (df.loc[i, "text_low"] not in df.loc[lowscores_i, "text_low"]):
 		lowscores_i = np.array([i, lowscores_i[np.argmin(lowscores)]])
 		lowscores = np.array([sentiment_cont, np.min(lowscores)])
 	return(highscores, highscores_i, lowscores, lowscores_i)
@@ -84,23 +91,21 @@ def plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl
 	barpl.pyplot(fig, width = 300)
 
 def emoji_updates(df, pic, posimage, negimage, sentiment_cont):
-	if sentiment_cont > 0:
+	prog_text.text( str(np.round((1+i)/df.shape[0]*100)) + "% done")
+	if sentiment_cont > 0:		
 		pic.image(posimage, caption='Text' + str(i+1), width = 100)
-		sleep(0.1)
 	elif sentiment_cont < 0:
 		pic.image(negimage, caption='Text' + str(i+1), width = 100)
-		sleep(0.1)
 
 def display_highlights(df, highscores_i, lowscores_i, analysis_var):
 	st.title("Text samples")
 	df["Highlights"] = df[analysis_var]
 	df = df.loc[np.append(highscores_i, lowscores_i), :]
-	df.sort_index(ascending=True, inplace = True)
-	df.index.names = ['TextID']	
 	st.table(df.loc[:, "Highlights"])
 
-def display_group_comparison(outputcsv, comparison_var):
+def display_group_comparison(outputcsv, comparison_var, df):
 	if comparison_var != "No variable selected":
+		outputcsv[comparison_var] = df[comparison_var]
 		vals = list(set(outputcsv[comparison_var]))
 		if len(vals) != 2:
 			st.write("Comparison variable must have exactly two possible values!")
@@ -109,10 +114,10 @@ def display_group_comparison(outputcsv, comparison_var):
 			group2_label = vals[1]
 			group1_ind = outputcsv[comparison_var] == group1_label
 			group2_ind = outputcsv[comparison_var] == group2_label
-			group1_mean = np.mean(outputcsv.cont_s[group1_ind])
-			group2_mean = np.mean(outputcsv.cont_s[group2_ind])
-			group1_std = np.std(outputcsv.cont_s[group1_ind])
-			group2_std = np.std(outputcsv.cont_s[group2_ind])
+			group1_mean = np.mean(outputcsv.sentiment_continuous[group1_ind])
+			group2_mean = np.mean(outputcsv.sentiment_continuous[group2_ind])
+			group1_std = np.std(outputcsv.sentiment_continuous[group1_ind])
+			group2_std = np.std(outputcsv.sentiment_continuous[group2_ind])
 			sidedness = np.where(group1_mean > group2_mean, "more positive sentiments", "more negative sentiments")
 			d = abs((group1_mean - group2_mean) / np.sqrt((group1_std ** 2 + group2_std **2) / 2))
 			d = np.round(d, 3)
@@ -124,13 +129,21 @@ def display_group_comparison(outputcsv, comparison_var):
 				effsize = "medium"
 			else:
 				effsize = "large"
-			stat, p = ttest_ind(outputcsv.cont_s[group1_ind], outputcsv.cont_s[group2_ind])
+			stat, p = ttest_ind(outputcsv.sentiment_continuous[group1_ind], outputcsv.sentiment_continuous[group2_ind])
 			significance = np.where(p < 0.05, "significantly", "not significantly")
 			p = np.round(p, 3)
 			st.title("Group comparison")
 			st.write("Group " + str(group1_label) + " expressed " + str(sidedness) + " than group " + str(group2_label) +
-				".  \n The magnitude of this difference can be considered " + effsize + " compared to other findings (Cohen's D: " + str(d) + ").  \n" +
-				"The effect is " + str(significance) + " different from zero (p-value: " + str(p) + ").")
+					".  \n The magnitude of this difference can be considered " + effsize + " (Cohen's D: " + str(d) + ").  \n" +
+					"The effect is " + str(significance) + " different from zero (p-value: " + str(p) + ").")
+		return(outputcsv)
+
+def get_table_download_link(df):
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}" download="outputcsv.csv" >Download outputs as csv</a>'
+    return(href)
+
 
 ################################################################################################################################
 
@@ -155,62 +168,52 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
 posimage = Image.open('positive_emoji.png')
 negimage = Image.open('negative_emoji.png')
 uploaded_file = st.file_uploader("Choose a csv file")
 model = EasyNMT('opus-mt')
-print(model.translate('This is a sentence we want to translate to German', target_lang='de'))
 if uploaded_file is not None:
 	form = st.form(key='my_form')
-	df=pd.read_csv(uploaded_file, header = "infer", sep = ";", index_col = False, encoding = "ISO-8859-1")
+	df=pd.read_csv(uploaded_file, header = "infer", sep = ";", index_col = False, encoding = "latin1")
 	analysis_var = form.selectbox("Which column holds the texts?", (["No variable selected"] + list(df.columns)))
 	lang = form.selectbox("Select the text language:", ["English", "German", "Other"])
-
 	comparison_var = form.selectbox("Add a binary comparison (optional):", (["No variable selected"] + list(df.columns)))
 	start = form.form_submit_button(label='Start analyses')
+	
 	if start and (analysis_var != "No variable selected"):
 		st.title("Sentiment analysis")
 		n = 4 #Agresti–Coull correction
-		n_pos = 2
-		n_neg = 2
-		highscores = np.array([0])
-		lowscores = np.array([0])
-		highscores_i = np.array([0])
-		lowscores_i = np.array([0])
-		prog_text = st.empty()
-		emoji_pic = st.empty()
-		barpl = st.empty()
-		result_table = st.empty()
-		outputcsv = df.copy()
-		uncert_case = st.empty()
+		n_pos = n_neg = 2
+		highscores = lowscores = highscores_i = lowscores_i = np.array([0])
+		prog_text, emoji_pic, barpl, result_table = st.empty(), st.empty(), st.empty(), st.empty(),
+		df["text_low"] = [text.lower() for text in df[analysis_var]]
+		outputcsv = df.iloc[:, [0,1,2]].copy()
+		outputcsv["text"] = df[analysis_var]
 		outputcsv["trans"] = str()
-		outputcsv["cont_s"] = float()
-		outputcsv["cat_s"] = int()
-		outputcsv["vader_sent"] = float()
-		outputcsv["textblob_sent"] = float()
+		outputcsv["sentiment_categorical"] = int()
+		outputcsv["sentiment_continuous"] = outputcsv["vader_sent"]  = outputcsv["textblob_sent"] = float()
 
 		for i, text in enumerate(df[analysis_var]):
-
-			#progress indication
-			prog_text.text( str(np.round((1+i)/df.shape[0]*100)) + "% done")
 
 			#translation and correction
 			prepped_text, outputcsv = translate_and_correct(text, model, lang, outputcsv, i)
 
 			#sentiment prediction and storing
 			sentiment_cat, sentiment_cont, outputcsv = get_aggregate_sentiment(prepped_text, i, outputcsv)
+			if sentiment_cat != 0: #for efficiency
 
-			#update highlights
-			highscores, highscores_i, lowscores, lowscores_i = update_highlights(sentiment_cont, highscores, highscores_i, lowscores, lowscores_i, i)
+				#update highlights
+				highscores, highscores_i, lowscores, lowscores_i = update_highlights(sentiment_cont, highscores, highscores_i, lowscores, lowscores_i, i, df)
 
-			#update statistics
-			n, n_pos, n_neg, prob_posit_user, prob_negat_user, error = update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont)
-			
-			#sentiment plot update
-			plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
+				#update statistics
+				n, n_pos, n_neg, prob_posit_user, prob_negat_user, error = update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont)
+				
+				#sentiment plot update
+				plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
 
-			#emoji output update
-			emoji_updates(df, emoji_pic, posimage, negimage, sentiment_cont)
+				#emoji output update
+				emoji_updates(df, emoji_pic, posimage, negimage, sentiment_cont)
 
 		#reset printouts
 		prog_text.empty()
@@ -223,7 +226,8 @@ if uploaded_file is not None:
 		display_highlights(df, highscores_i, lowscores_i, analysis_var)
 
 		#display group comparison
-		display_group_comparison(outputcsv, comparison_var)
+		outputcsv = display_group_comparison(outputcsv, comparison_var, df)
 
-		#write out outputcsv
-		outputcsv.to_csv("outputcsv.csv", sep = ";")
+		#download outputcsv
+		st.title("Download")
+		st.markdown(get_table_download_link(outputcsv), unsafe_allow_html=True)

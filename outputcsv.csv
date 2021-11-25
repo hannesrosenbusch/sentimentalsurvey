@@ -1,9 +1,10 @@
-;groupingcolumn;text;truesentiment;trans;cont_s;cat_s;vader_sent;textblob_sent
-0;0;ich habe es probiert und es ist schlecht;neg;ich have es robert und es ist schlecht;0.0;0;0.0;0.0
-1;0;das messer ist nichtmal scharf genug um butter zu schneiden;neg;das lesser ist nichtmal scarf genug up butter zu schneider;0.0;0;0.0;0.0
-2;1;hässliche fotos;pos;hässliche forms;0.0;0;0.0;0.0
-3;0;hmmm Ich mag es nicht;neg;mmm Ch may es nicht;0.0;0;0.0;0.0
-4;1;das ist der schlimmste spot aller zeitn;pos;das ist der schlimmste spot alter vein;0.0;0;0.0;0.0
-5;0;nicht sicher;neg;nicht richer;0.773;1;0.773;0.0
-6;1;enttäuschend;pos;enttäuschend;0.0;0;0.0;0.0
-7;0;sorry nicht überzeugt;neg;sorry nicht überzeugt;-0.894;-2;-0.394;-0.5
+;groupingcolumn;text;trans;cont_s;cat_s;vader_sent;textblob_sent
+0;0;i tried it and it is great;i tried it and it is great;            1.25;2;            0.45;             0.8
+1;0;the knife is not even sharp;the knife is not even sharp;           -0.12;-1;               0;           -0.12
+2;1;ugly pics;ugly pick;           -1.47;-2;           -0.77;            -0.7
+3;0;hmmm i dont like it;mmm i dont like it;           -0.41;-1;           -0.41;               0
+4;1;that is the worst spot of all time;that is the worst spot of all time;           -1.37;-2;           -0.37;              -1
+5;0;not sure;not sure;           -0.91;-2;           -0.66;           -0.25
+6;1;disappointing;disappointing;            -1.6;-2;              -1;            -0.6
+7;0;sorry not convinced;sorry not convinced;           -1.28;-2;           -0.78;            -0.5
+8;1;good stuff;good stuff;            1.44;2;            0.74;             0.7

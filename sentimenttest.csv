@@ -1,9 +1,10 @@
-groupingcolumn;text;truesentiment
-0;i tried it and it is great;neg
-0;the knofe is not even sharp;neg
-1;ugly pics;pos
-0;hmmm i dont like it;neg
-1;that is the worst spot of all time;pos
-0;not sure;neg
-1;disappointing;pos
-0;sorry not convinced;neg
+groupingcolumn;text
+0;i tried it and it is great
+0;the knife is not even sharp
+1;ugly pics
+0;hmmm i dont like it
+1;that is the worst spot of all time
+0;not sure
+1;disappointing
+0;sorry not convinced
+1;good stuff
