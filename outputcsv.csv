@@ -1,14 +1,9 @@
-,othercolumn,text,truesentiment,cont_s,vader_sent,textblob_sent,cat_s
-0,1,i tried it and it does not work,neg,0.0,0.0,0.0,0
-1,2,the knife is not even sharp enough to cut butter,neg,-0.2515,-0.189,-0.0625,-2
-2,3,baeutiful images,pos,1.646,0.796,0.85,2
-3,1,hmmm I dont really like it,neg,-0.16799999999999998,-0.368,0.2,0
-4,2,that is the best spot I have ever seen. So random lol,pos,0.546,0.296,0.25,2
-5,3,not sure,neg,-0.912,-0.662,-0.25,-2
-6,4,i am convinced,pos,0.73,0.73,0.0,1
-7,6,sorry not convinced,neg,-1.2810000000000001,-0.781,-0.5,-2
-8,7,i have to admit that i hoped for a better result. It ends up being somewhat undwhelming,neg,0.899,0.399,0.5,2
-9,9,pretty funny,pos,1.25,1.0,0.25,2
-10,10,why would the actor do that? I dont get it.,n,0.0,0.0,0.0,0
-11,9,"i dont have a lot of experience with traktors, but the look of the vehicle is impressive",pos,1.241,0.241,1.0,2
-12,12,too expensive,neg,-0.5,0.0,-0.5,-1
+;groupingcolumn;text;truesentiment;trans;cont_s;cat_s;vader_sent;textblob_sent
+0;0;ich habe es probiert und es ist schlecht;neg;ich have es robert und es ist schlecht;0.0;0;0.0;0.0
+1;0;das messer ist nichtmal scharf genug um butter zu schneiden;neg;das lesser ist nichtmal scarf genug up butter zu schneider;0.0;0;0.0;0.0
+2;1;hässliche fotos;pos;hässliche forms;0.0;0;0.0;0.0
+3;0;hmmm Ich mag es nicht;neg;mmm Ch may es nicht;0.0;0;0.0;0.0
+4;1;das ist der schlimmste spot aller zeitn;pos;das ist der schlimmste spot alter vein;0.0;0;0.0;0.0
+5;0;nicht sicher;neg;nicht richer;0.773;1;0.773;0.0
+6;1;enttäuschend;pos;enttäuschend;0.0;0;0.0;0.0
+7;0;sorry nicht überzeugt;neg;sorry nicht überzeugt;-0.894;-2;-0.394;-0.5

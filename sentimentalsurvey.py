@@ -9,14 +9,18 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from time import sleep
 from scipy.stats import ttest_ind
+from easynmt import EasyNMT
 
-def translate_and_correct(text):
-	try:
-		trans = GoogleTranslator(source='auto', target='en').translate(text)
-	except Exception as e: 
-		trans = text
-		textBlb = TextBlob(trans)           
-		return(str(textBlb.correct()))  
+def translate_and_correct(text, model, lang, outputcsv, i):
+	if lang == "German":
+		trans = model.translate(text, source_lang = "de", target_lang = "en")
+	elif lang == "English":
+		textBlb = TextBlob(text)           
+		trans = str(textBlb.correct())
+	else:
+		trans = model.translate(text,  target_lang = "en")
+	outputcsv.trans[i] = trans
+	return(trans, outputcsv)
 
 def get_aggregate_sentiment(text, i, outputcsv):
 	sid = SentimentIntensityAnalyzer()
@@ -141,15 +145,27 @@ table th:nth-child(1) {
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown(
+    """ <style>
+            div[role="radiogroup"] >  :first-child{
+                display: none !important;
+            }
+        </style>
+        """,
+    unsafe_allow_html=True
+)
+
 posimage = Image.open('positive_emoji.png')
 negimage = Image.open('negative_emoji.png')
 uploaded_file = st.file_uploader("Choose a csv file")
-
+model = EasyNMT('opus-mt')
+print(model.translate('This is a sentence we want to translate to German', target_lang='de'))
 if uploaded_file is not None:
 	form = st.form(key='my_form')
-	df=pd.read_csv(uploaded_file, header = "infer", sep = ";", index_col = False)
+	df=pd.read_csv(uploaded_file, header = "infer", sep = ";", index_col = False, encoding = "ISO-8859-1")
 	analysis_var = form.selectbox("Which column holds the texts?", (["No variable selected"] + list(df.columns)))
-	lang = form.selectbox("Select the text language:", ["English", "German"])
+	lang = form.selectbox("Select the text language:", ["English", "German", "Other"])
+
 	comparison_var = form.selectbox("Add a binary comparison (optional):", (["No variable selected"] + list(df.columns)))
 	start = form.form_submit_button(label='Start analyses')
 	if start and (analysis_var != "No variable selected"):
@@ -166,10 +182,12 @@ if uploaded_file is not None:
 		barpl = st.empty()
 		result_table = st.empty()
 		outputcsv = df.copy()
+		uncert_case = st.empty()
+		outputcsv["trans"] = str()
 		outputcsv["cont_s"] = float()
+		outputcsv["cat_s"] = int()
 		outputcsv["vader_sent"] = float()
 		outputcsv["textblob_sent"] = float()
-		outputcsv["cat_s"] = int()
 
 		for i, text in enumerate(df[analysis_var]):
 
@@ -177,7 +195,7 @@ if uploaded_file is not None:
 			prog_text.text( str(np.round((1+i)/df.shape[0]*100)) + "% done")
 
 			#translation and correction
-			prepped_text = translate_and_correct(text)
+			prepped_text, outputcsv = translate_and_correct(text, model, lang, outputcsv, i)
 
 			#sentiment prediction and storing
 			sentiment_cat, sentiment_cont, outputcsv = get_aggregate_sentiment(prepped_text, i, outputcsv)
@@ -208,4 +226,4 @@ if uploaded_file is not None:
 		display_group_comparison(outputcsv, comparison_var)
 
 		#write out outputcsv
-		#outputcsv.to_csv("outputcsv.csv")
+		outputcsv.to_csv("outputcsv.csv", sep = ";")
