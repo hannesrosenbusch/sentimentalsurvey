@@ -1,7 +1,4 @@
 import streamlit as st
-import nltk
-nltk.download('vader_lexicon')
-from nltk.sentiment.vader import SentimentIntensityAnalyzer #3.3
 import numpy as np #1.19.5
 from textblob import TextBlob
 import pandas as pd
@@ -10,7 +7,12 @@ from PIL import Image
 from time import sleep
 from scipy.stats import ttest_ind
 from easynmt import EasyNMT
+from transformers import pipeline
 import base64
+sentiment_analysis = pipeline("sentiment-analysis",model="siebert/sentiment-roberta-large-english")
+neutral_words = list(pd.read_csv("neutral_words.csv", header = "infer", sep = ",", index_col = False, encoding = "latin1")["words"])
+print(neutral_words)
+
 
 def translate_and_correct(text, model, lang, outputcsv, i):
 	if text == "-":
@@ -25,25 +27,19 @@ def translate_and_correct(text, model, lang, outputcsv, i):
 	outputcsv.trans[i] = trans
 	return(trans, outputcsv)
 
-def get_aggregate_sentiment(text, i, outputcsv):
-	sid = SentimentIntensityAnalyzer()
-	sentiment_cat = 0
-	tb_polarity = TextBlob(str(text)).sentiment.polarity
-	vader_output = sid.polarity_scores(str(text))
-	vader_polarity = vader_output["pos"] - vader_output["neg"]
-	sentiment_cont = vader_polarity + tb_polarity
-	if vader_polarity > 0:
-		sentiment_cat += 1
-	if tb_polarity > 0:
-		sentiment_cat += 1
-	if vader_polarity < 0:
-		sentiment_cat -= 1
-	if tb_polarity < 0:
-		sentiment_cat -= 1
+def get_aggregate_sentiment(text, i, outputcsv, neutral_words):
+	if text.lower() in neutral_words:
+		sentiment_cont = sentiment_cat = 0
+	else:
+		s = sentiment_analysis(text)[0]
+		if s['label'] == "NEGATIVE":
+			sign = -1
+		else:
+			sign = 1
+		sentiment_cont = sign * s['score']
+		sentiment_cat = sign
 	outputcsv.sentiment_continuous[i] = np.round(sentiment_cont * 100)
 	outputcsv.sentiment_categorical[i] = sentiment_cat
-	outputcsv.vader_sent[i] = np.round(vader_polarity * 100)
-	outputcsv.textblob_sent[i] = np.round(tb_polarity * 100)
 	return(sentiment_cat, sentiment_cont, outputcsv)
 
 def update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont):
@@ -58,10 +54,6 @@ def update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont):
 
 def update_highlights(sentiment_cont, highscores, highscores_i, lowscores, lowscores_i, i, df):
 	if (sentiment_cont > np.min(highscores)) and (df.loc[i, "text_low"] not in df.loc[highscores_i, "text_low"].values):
-		print(i)
-		print(df.loc[i, analysis_var])
-		print(df.loc[highscores_i, analysis_var])
-		print(df.loc[i, analysis_var] not in df.loc[highscores_i, analysis_var].values)
 		highscores_i = np.array([i, highscores_i[np.argmax(highscores)]])
 		highscores = np.array([sentiment_cont, np.max(highscores)])
 	elif sentiment_cont < np.max(lowscores) and (df.loc[i, "text_low"] not in df.loc[lowscores_i, "text_low"]):
@@ -136,7 +128,7 @@ def display_group_comparison(outputcsv, comparison_var, df):
 			st.write("Group " + str(group1_label) + " expressed " + str(sidedness) + " than group " + str(group2_label) +
 					".  \n The magnitude of this difference can be considered " + effsize + " (Cohen's D: " + str(d) + ").  \n" +
 					"The effect is " + str(significance) + " different from zero (p-value: " + str(p) + ").")
-		return(outputcsv)
+	return(outputcsv)
 
 def get_table_download_link(df):
     csv = df.to_csv(index=False)
@@ -168,7 +160,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 posimage = Image.open('positive_emoji.png')
 negimage = Image.open('negative_emoji.png')
 uploaded_file = st.file_uploader("Choose a csv file")
@@ -192,7 +183,7 @@ if uploaded_file is not None:
 		outputcsv["text"] = df[analysis_var]
 		outputcsv["trans"] = str()
 		outputcsv["sentiment_categorical"] = int()
-		outputcsv["sentiment_continuous"] = outputcsv["vader_sent"]  = outputcsv["textblob_sent"] = float()
+		outputcsv["sentiment_continuous"] = float()
 
 		for i, text in enumerate(df[analysis_var]):
 
@@ -200,7 +191,7 @@ if uploaded_file is not None:
 			prepped_text, outputcsv = translate_and_correct(text, model, lang, outputcsv, i)
 
 			#sentiment prediction and storing
-			sentiment_cat, sentiment_cont, outputcsv = get_aggregate_sentiment(prepped_text, i, outputcsv)
+			sentiment_cat, sentiment_cont, outputcsv = get_aggregate_sentiment(prepped_text, i, outputcsv, neutral_words)
 			if sentiment_cat != 0: #for efficiency
 
 				#update highlights
