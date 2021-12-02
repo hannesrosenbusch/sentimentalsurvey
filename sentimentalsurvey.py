@@ -10,7 +10,7 @@ from easynmt import EasyNMT #translation
 from transformers import pipeline #sentiment
 import base64
 
-@st.experimental_memo()
+#@st.experimental_memo()
 def initiate_global_vars():
 	neutral_words = list(pd.read_csv("neutral_words.csv", header = "infer", sep = ",", index_col = False, encoding = "latin1")["words"])
 	posimage = Image.open('positive_emoji.png')
