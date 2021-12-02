@@ -1,5 +1,4 @@
 import streamlit as st
-import tokenizers
 import numpy as np 
 from textblob import TextBlob
 import pandas as pd
