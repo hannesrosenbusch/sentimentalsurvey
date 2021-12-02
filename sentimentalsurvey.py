@@ -1,33 +1,38 @@
 import streamlit as st
-import numpy as np #1.19.5
+import tokenizers
+import numpy as np 
 from textblob import TextBlob
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
-from time import sleep
+import time
 from scipy.stats import ttest_ind
-from easynmt import EasyNMT
-from transformers import pipeline
+from easynmt import EasyNMT #translation
+from transformers import pipeline #sentiment
 import base64
-sentiment_analysis = pipeline("sentiment-analysis",model="siebert/sentiment-roberta-large-english")
-neutral_words = list(pd.read_csv("neutral_words.csv", header = "infer", sep = ",", index_col = False, encoding = "latin1")["words"])
-print(neutral_words)
 
+@st.experimental_memo()
+def initiate_global_vars():
+	neutral_words = list(pd.read_csv("neutral_words.csv", header = "infer", sep = ",", index_col = False, encoding = "latin1")["words"])
+	posimage = Image.open('positive_emoji.png')
+	negimage = Image.open('negative_emoji.png')
+	translation_analysis = EasyNMT('opus-mt')
+	sentiment_analysis = pipeline("sentiment-analysis",model="siebert/sentiment-roberta-large-english")
+	return(neutral_words, posimage, negimage, translation_analysis, sentiment_analysis)
 
-def translate_and_correct(text, model, lang, outputcsv, i):
-	if text == "-":
-		trans = "-"
-	elif lang == "German":
-		trans = model.translate(text, source_lang = "de", target_lang = "en")
+def translate_and_correct(translation_analysis, lang, outputcsv):
+	if lang == "German":
+		trans = translation_analysis.translate(outputcsv.text, source_lang = "de", target_lang = "en")
 	elif lang == "English":
-		textBlb = TextBlob(text)           
+		textBlb = TextBlob(outputcsv.text)           
 		trans = str(textBlb.correct())
 	else:
-		trans = model.translate(text,  target_lang = "en")
-	outputcsv.trans[i] = trans
-	return(trans, outputcsv)
+		trans = translation_analysis.translate(outputcsv.text,  target_lang = "en")
+	trans = [trans[i] if outputcsv.text[i] != "-" else "-" for i in range(len(trans))]
+	outputcsv["trans"] = trans
+	return(outputcsv)
 
-def get_aggregate_sentiment(text, i, outputcsv, neutral_words):
+def get_aggregate_sentiment(sentiment_analysis, text, i, outputcsv, neutral_words):
 	if text.lower() in neutral_words:
 		sentiment_cont = sentiment_cat = 0
 	else:
@@ -82,7 +87,7 @@ def plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl
 	ax[1].set_ylim([0, 100])
 	barpl.pyplot(fig, width = 300)
 
-def emoji_updates(df, pic, posimage, negimage, sentiment_cont):
+def emoji_updates(df, pic, posimage, negimage, sentiment_cont, i):
 	prog_text.text( str(np.round((1+i)/df.shape[0]*100)) + "% done")
 	if sentiment_cont > 0:		
 		pic.image(posimage, caption='Text' + str(i+1), width = 100)
@@ -160,10 +165,13 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-posimage = Image.open('positive_emoji.png')
-negimage = Image.open('negative_emoji.png')
+#load materials
+start = time.time()
+neutral_words, posimage, negimage, translation_analysis, sentiment_analysis = initiate_global_vars()
+print("variable initiation took", time.time() - start)
+
 uploaded_file = st.file_uploader("Choose a csv file")
-model = EasyNMT('opus-mt')
+
 if uploaded_file is not None:
 	form = st.form(key='my_form')
 	df=pd.read_csv(uploaded_file, header = "infer", sep = ";", index_col = False, encoding = "latin1")
@@ -171,27 +179,27 @@ if uploaded_file is not None:
 	lang = form.selectbox("Select the text language:", ["English", "German", "Other"])
 	comparison_var = form.selectbox("Add a binary comparison (optional):", (["No variable selected"] + list(df.columns)))
 	start = form.form_submit_button(label='Start analyses')
-	
 	if start and (analysis_var != "No variable selected"):
 		st.title("Sentiment analysis")
 		n = 4 #Agresti–Coull correction
 		n_pos = n_neg = 2
 		highscores = lowscores = highscores_i = lowscores_i = np.array([0])
-		prog_text, emoji_pic, barpl, result_table = st.empty(), st.empty(), st.empty(), st.empty(),
+		prog_text, emoji_pic, barpl, result_table = st.empty(), st.empty(), st.empty(), st.empty()
+		print(df[analysis_var])
 		df["text_low"] = [text.lower() for text in df[analysis_var]]
-		outputcsv = df.iloc[:, [0,1,2]].copy()
+		outputcsv = df.iloc[:, [0,1]].copy()
 		outputcsv["text"] = df[analysis_var]
 		outputcsv["trans"] = str()
 		outputcsv["sentiment_categorical"] = int()
 		outputcsv["sentiment_continuous"] = float()
 
-		for i, text in enumerate(df[analysis_var]):
+		#translation and correction
+		outputcsv = translate_and_correct(translation_analysis, lang, outputcsv)
 
-			#translation and correction
-			prepped_text, outputcsv = translate_and_correct(text, model, lang, outputcsv, i)
-
+		for i, text in enumerate(outputcsv.trans):
+			
 			#sentiment prediction and storing
-			sentiment_cat, sentiment_cont, outputcsv = get_aggregate_sentiment(prepped_text, i, outputcsv, neutral_words)
+			sentiment_cat, sentiment_cont, outputcsv = get_aggregate_sentiment(sentiment_analysis, text, i, outputcsv, neutral_words)
 			if sentiment_cat != 0: #for efficiency
 
 				#update highlights
@@ -204,7 +212,7 @@ if uploaded_file is not None:
 				plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
 
 				#emoji output update
-				emoji_updates(df, emoji_pic, posimage, negimage, sentiment_cont)
+				emoji_updates(df, emoji_pic, posimage, negimage, sentiment_cont, i)
 
 		#reset printouts
 		prog_text.empty()
