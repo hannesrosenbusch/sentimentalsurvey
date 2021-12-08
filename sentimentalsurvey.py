@@ -10,11 +10,11 @@ from easynmt import EasyNMT #translation
 from transformers import pipeline #sentiment
 import base64
 import string
-import re
 
 @st.experimental_memo()
 def initiate_global_vars():
 	neutral_words = list(pd.read_csv("neutral_words.csv", header = "infer", sep = ",", index_col = False, encoding = "latin1")["words"].astype("str"))
+	neutral_words.append("")
 	posimage = Image.open('positive_emoji.png')
 	negimage = Image.open('negative_emoji.png')
 	translation_analysis = EasyNMT('opus-mt')
@@ -23,8 +23,8 @@ def initiate_global_vars():
 	return(neutral_words, posimage, negimage, translation_analysis, sentiment_analysis, punct_table)
 
 def translate_and_correct(translation_analysis, lang, outputcsv):
-	outputcsv["text"] = outputcsv["text"].str.replace("\!\!+", "!") #re.sub("\!\!+", "!", outputcsv.text[i]) 
-	outputcsv["text"] = outputcsv["text"].str.replace("\?\?+", "?") #text = re.sub("\!\!+", "!", text) 
+	outputcsv["text"] = outputcsv["text"].str.replace("\!\!+", "!") 
+	outputcsv["text"] = outputcsv["text"].str.replace("\?\?+", "?") 
 	if lang == "German":
 		trans = translation_analysis.translate(outputcsv["text"], source_lang = "de", target_lang = "en")
 	elif lang == "Spanish":
@@ -45,17 +45,19 @@ def translate_and_correct(translation_analysis, lang, outputcsv):
 	return(outputcsv)
 
 def get_aggregate_sentiment(sentiment_analysis, neutral_words, outputcsv, i, punct_table):
+	print(outputcsv.trans[i].lower().translate(punct_table))
 	if outputcsv.trans[i].lower().translate(punct_table) in neutral_words:
 		sentiment_cont = sentiment_cat = 0
 	else:
 		try:
 			s = sentiment_analysis(outputcsv.trans[i])[0]
+
 			if s['label'] == "NEGATIVE":
 				sign = -1
 			else:
 				sign = 1
 			sentiment_cont = sign * s['score']
-			sentiment_cat = sign
+			sentiment_cat = sign * (s['score'] > 0.95)
 		except:
 			sentiment_cont = sentiment_cat = 0
 			print("error at:" + outputcsv.trans[i])
@@ -184,7 +186,7 @@ st.markdown(
 
 #load materials
 neutral_words, posimage, negimage, translation_analysis, sentiment_analysis, punct_table = initiate_global_vars()
-
+print(neutral_words)
 uploaded_file = st.file_uploader("Choose a csv file")
 
 if uploaded_file is not None:
@@ -196,23 +198,25 @@ if uploaded_file is not None:
 	start = form.form_submit_button(label='Start analyses')
 	if start and (analysis_var != "No variable selected"):
 		start = time.time()
-		st.title("Sentiment analysis")
-		n = 4 #Agresti–Coull correction
-		n_pos = n_neg = 2
-		highscores = lowscores = highscores_i = lowscores_i = np.array([0])
-		prog_text, emoji_pic, barpl, result_table = st.empty(), st.empty(), st.empty(), st.empty()
-		df[analysis_var] =  df[analysis_var].astype("str")
-		df["text_low"] = [text.lower() for text in df[analysis_var]]
-		df["text_low"] =  df["text_low"].astype("str")
-		outputcsv = df.iloc[:, [0,1]].copy()
-		outputcsv["text"] = df[analysis_var]
-		outputcsv["trans"] = str()
-		outputcsv["sentiment_categorical"] = int()
-		outputcsv["sentiment_continuous"] = float()
 
-		#translation and correction
-		outputcsv = translate_and_correct(translation_analysis, lang, outputcsv)
+		with st.spinner('Analyzing contents...'):
+			n = 4 #Agresti–Coull correction
+			n_pos = n_neg = 2
+			highscores = lowscores = highscores_i = lowscores_i = np.array([0])
+			prog_text, emoji_pic, barpl, result_table = st.empty(), st.empty(), st.empty(), st.empty()
+			df[analysis_var] =  df[analysis_var].astype("str")
+			df["text_low"] = [text.lower() for text in df[analysis_var]]
+			df["text_low"] =  df["text_low"].astype("str")
+			outputcsv = df.iloc[:, [0,1]].copy()
+			outputcsv["text"] = df[analysis_var]
+			outputcsv["trans"] = str()
+			outputcsv["sentiment_categorical"] = int()
+			outputcsv["sentiment_continuous"] = float()
+
+			#translation and correction
+			outputcsv = translate_and_correct(translation_analysis, lang, outputcsv)
 		
+		st.title("Sentiment analysis")
 
 		for i, text in enumerate(outputcsv.trans):
 			#sentiment prediction and storing
@@ -227,10 +231,13 @@ if uploaded_file is not None:
 				n, n_pos, n_neg, prob_posit_user, prob_negat_user, error = update_statistics(n, n_pos, n_neg, sentiment_cat, sentiment_cont)
 				
 				#sentiment plot update
-		plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
+				#plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
 
 				#emoji output update
 				#emoji_updates(df, emoji_pic, posimage, negimage, sentiment_cont, i)
+
+		#sentiment plot update
+		plot_current_sentiment_totals(prob_posit_user, prob_negat_user, error, barpl)
 
 		#reset printouts
 		prog_text.empty()
